@@ -1,32 +1,57 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<project xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-         xmlns="http://maven.apache.org/POM/4.0.0"
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>life.lluis</groupId>
     <artifactId>MultiverseHardcore</artifactId>
-    <version>1.0.3</version>
+    <version>2.0.0</version>
+    <packaging>jar</packaging>
+
+    <name>MultiverseHardcore</name>
+
+    <properties>
+        <java.version>1.8</java.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+    <url>lluis.life</url>
+
     <build>
         <plugins>
             <plugin>
-                <version>3.8.1</version>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.8.1</version>
                 <configuration>
-                    <source>8</source>
-                    <target>8</target>
+                    <source>16</source>
+                    <target>16</target>
                 </configuration>
             </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-shade-plugin</artifactId>
+                <version>3.2.4</version>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>shade</goal>
+                        </goals>
+                        <configuration>
+                            <createDependencyReducedPom>false</createDependencyReducedPom>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
         </plugins>
+        <resources>
+            <resource>
+                <directory>src/main/resources</directory>
+                <filtering>true</filtering>
+            </resource>
+        </resources>
     </build>
-
-    <properties>
-        <maven.compiler.source>1.6</maven.compiler.source>
-        <maven.compiler.target>1.6</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
-        <project.reporting.outputEncoding>UTF-8</project.reporting.outputEncoding>
-    </properties>
 
     <repositories>
         <repository>
@@ -34,8 +59,12 @@
             <url>https://hub.spigotmc.org/nexus/content/repositories/snapshots/</url>
         </repository>
         <repository>
-            <id>Multiverse-Core</id>
-            <url>http://repo.onarandombox.com/content/repositories/multiverse/</url>
+            <id>OnARandomBox</id>
+            <url>https://repo.onarandombox.com/content/groups/public/</url>
+        </repository>
+        <repository>
+            <id>placeholderapi</id>
+            <url>https://repo.extendedclip.com/content/repositories/placeholderapi/</url>
         </repository>
     </repositories>
 
@@ -43,26 +72,48 @@
         <dependency>
             <groupId>org.spigotmc</groupId>
             <artifactId>spigot-api</artifactId>
-            <version>1.16.4-R0.1-SNAPSHOT</version>
+            <version>1.20.1-R0.1-SNAPSHOT</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>com.onarandombox.multiversecore</groupId>
             <artifactId>Multiverse-Core</artifactId>
+            <version>4.3.1</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.onarandombox.multiversenetherportals</groupId>
+            <artifactId>Multiverse-NetherPortals</artifactId>
             <version>4.2.2</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.commons</groupId>
+            <artifactId>commons-lang3</artifactId>
+            <version>3.12.0</version>
         </dependency>
         <dependency>
             <groupId>com.github.seeseemelk</groupId>
             <artifactId>MockBukkit-v1.16</artifactId>
-            <version>0.28.0</version>
+            <version>1.5.2</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
-            <version>4.13.1</version>
+            <version>4.13.2</version>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>org.jetbrains</groupId>
+            <artifactId>annotations</artifactId>
+            <version>24.0.1</version>
+        </dependency>
+        <dependency>
+            <groupId>me.clip</groupId>
+            <artifactId>placeholderapi</artifactId>
+            <version>2.11.3</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
-
 </project>

@@ -4,7 +4,7 @@ import be.seeseemelk.mockbukkit.WorldMock;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import com.onarandombox.MultiverseCore.enums.AllowedPortalType;
 import com.onarandombox.MultiverseCore.exceptions.PropertyDoesNotExistException;
-import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.bukkit.*;
 import org.bukkit.permissions.Permission;
 import org.jetbrains.annotations.Nullable;

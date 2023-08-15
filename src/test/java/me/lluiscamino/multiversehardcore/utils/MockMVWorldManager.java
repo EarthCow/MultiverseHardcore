@@ -6,7 +6,7 @@ import com.onarandombox.MultiverseCore.api.MVWorldManager;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
 import com.onarandombox.MultiverseCore.api.WorldPurger;
 import com.onarandombox.MultiverseCore.utils.PurgeWorlds;
-import org.apache.commons.lang.NotImplementedException;
+import org.apache.commons.lang3.NotImplementedException;
 import org.bukkit.World;
 import org.bukkit.WorldType;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -115,6 +115,11 @@ public class MockMVWorldManager implements MVWorldManager {
     }
 
     @Override
+    public MultiverseWorld getMVWorld(String s, boolean b) {
+        throw new NotImplementedException();
+    }
+
+    @Override
     public MultiverseWorld getMVWorld(World world) {
         return getMVWorld(world.getName());
     }
@@ -122,6 +127,11 @@ public class MockMVWorldManager implements MVWorldManager {
     @Override
     public boolean isMVWorld(String s) {
         return MVWorldsMap.containsKey(s);
+    }
+
+    @Override
+    public boolean isMVWorld(String s, boolean b) {
+        throw new NotImplementedException();
     }
 
     @Override
@@ -195,12 +205,22 @@ public class MockMVWorldManager implements MVWorldManager {
     }
 
     @Override
+    public boolean regenWorld(String s, boolean b, boolean b1, String s1, boolean b2) {
+        throw new NotImplementedException();
+    }
+
+    @Override
     public boolean isKeepingSpawnInMemory(World world) {
         throw new NotImplementedException();
     }
 
     @Override
     public boolean hasUnloadedWorld(String s, boolean b) {
+        throw new NotImplementedException();
+    }
+
+    @Override
+    public Collection<String> getPotentialWorlds() {
         throw new NotImplementedException();
     }
 }

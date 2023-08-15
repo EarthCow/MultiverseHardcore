@@ -2,22 +2,26 @@ package me.lluiscamino.multiversehardcore.utils;
 
 import com.onarandombox.MultiverseCore.api.MVWorldManager;
 import com.onarandombox.MultiverseCore.api.MultiverseWorld;
+import com.onarandombox.MultiverseNetherPortals.MultiverseNetherPortals;
 import me.lluiscamino.multiversehardcore.MultiverseHardcore;
 import me.lluiscamino.multiversehardcore.exceptions.PlayerNotParticipatedException;
 import me.lluiscamino.multiversehardcore.exceptions.PlayerParticipationAlreadyExistsException;
 import me.lluiscamino.multiversehardcore.exceptions.WorldIsNotHardcoreException;
 import me.lluiscamino.multiversehardcore.models.HardcoreWorld;
 import me.lluiscamino.multiversehardcore.models.PlayerParticipation;
-import org.bukkit.GameMode;
-import org.bukkit.Server;
-import org.bukkit.World;
+import nl.zandervdm.stayput.CustomEvents.RandomTPOnPreviousLocationNullEvent;
+import nl.zandervdm.stayput.Main;
+import org.bukkit.*;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Event;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerEvent;
+import org.bukkit.event.player.PlayerTeleportEvent;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.logging.Logger;
 
@@ -48,6 +52,23 @@ public final class WorldUtils {
     public static World getNormalWorld(@NotNull World world) {
         try {
             if (world.getEnvironment() == World.Environment.NORMAL) return world;
+            MultiverseNetherPortals netherPortals = (MultiverseNetherPortals) Bukkit.getServer().getPluginManager().getPlugin("Multiverse-NetherPortals");
+            if (netherPortals != null) {
+                String[] worldLinks = netherPortals.getWorldLinks().toString().replace("{","").replace("}","").replace(" ", "").split(",");
+                String worldLink = Arrays.stream(worldLinks).filter(link -> link.contains(world.getName())).findFirst().orElse(null);
+                if (worldLink == null) {
+                    worldLinks = netherPortals.getEndWorldLinks().toString().replace("{","").replace("}","").replace(" ", "").split(",");
+                    worldLink = Arrays.stream(worldLinks).filter(link -> link.contains(world.getName())).findFirst().orElse(null);
+                }
+                if (worldLink != null) {
+                    World normalWorld = getServer().getWorld(worldLink.replace(world.getName(), "").replace("=", ""));
+                    if (normalWorld == null) return world;
+                    HardcoreWorld hcWorld = new HardcoreWorld(normalWorld.getName());
+                    boolean includeNetherOrEnd = world.getEnvironment() == World.Environment.NETHER ?
+                            hcWorld.getConfiguration().isIncludeNether() : hcWorld.getConfiguration().isIncludeEnd();
+                    return !includeNetherOrEnd ? world : normalWorld;
+                }
+            }
             if (hasSuffix(world)) {
                 World normalWorld = getServer().getWorld(removeWorldSuffix(world));
                 if (normalWorld == null) return world;
@@ -63,17 +84,80 @@ public final class WorldUtils {
     }
 
     public static boolean respawnPlayer(@NotNull Player player) {
+        return respawnPlayer(player, null);
+    }
+
+    public static boolean respawnPlayer(@NotNull Player player, @Nullable HardcoreWorld hardcoreWorld) {
         try {
             String worldName = getNormalWorld(player.getWorld()).getName();
-            World respawnWorld = new HardcoreWorld(worldName).getConfiguration().getSpawnWorld();
+            HardcoreWorld actualHardcoreWorld = (hardcoreWorld == null ? new HardcoreWorld(worldName) : hardcoreWorld);
+            World respawnWorld = actualHardcoreWorld.getConfiguration().getSpawnWorld();
             if (respawnWorld == null) {
                 getLogger().warning("Respawn world does not exist!");
                 return false;
             }
-            return player.teleport(respawnWorld.getSpawnLocation());
+            boolean teleportResponse = player.teleport(respawnWorld.getSpawnLocation(), PlayerTeleportEvent.TeleportCause.PLUGIN);
+            if (MultiverseHardcore.getInstance().getServer().getPluginManager().getPlugin("StayPut") instanceof Main stayPut) {
+                stayPut.getDatabase().deleteLocation(player, actualHardcoreWorld.getConfiguration().getWorld());
+            }
+            return teleportResponse;
         } catch (WorldIsNotHardcoreException e) {
             return false; // This cannot happen. If player is not in a hardcore world, this function will not be called.
         }
+    }
+
+    public static void handlePlayerRandomTeleport(@NotNull RandomTPOnPreviousLocationNullEvent event) {
+        try {
+            Player player = event.getPlayer();
+            World world = getNormalWorld(event.getToWorld());
+            if (!worldIsHardcore(world)) {
+                setGameModeBackToDefaultIfNecessary(player, world);
+                return;
+            }
+            addPlayerParticipationIfNotExists(player, world);
+            PlayerParticipation participation = new PlayerParticipation(player, world);
+            if (participation.isDeathBanned()) {
+                // no need to send any messages as the normal teleport will do that
+                event.setCancelled(true);
+            }
+        } catch (PlayerNotParticipatedException | WorldIsNotHardcoreException ignored) {
+        } // This cannot happen.
+    }
+
+    public static void handlePlayerNormalTeleport(@NotNull PlayerTeleportEvent event) {
+        try {
+            Player player = event.getPlayer();
+            if (event.getFrom().getWorld() == null || event.getTo() == null || event.getTo().getWorld() == null)
+                return;
+            if (event.getFrom().getWorld().equals(event.getTo().getWorld())) {
+                //teleport occurred within the same world no need to run
+                return;
+            }
+            World world = getNormalWorld(event.getTo().getWorld());
+            if (!worldIsHardcore(world)) {
+                if (worldIsHardcore(getNormalWorld(event.getFrom().getWorld()))) {
+                    // If they came from a hardcore world then reset the texture pack
+                    MultiverseHardcore plugin = MultiverseHardcore.getInstance();
+                    String resourceURL = plugin.getConfig().getString("HardcoreResourcePackURL");
+                    if (resourceURL != null && !resourceURL.isEmpty()) {
+                        player.setResourcePack("http://cdn.moep.tv/files/Empty.zip");
+                    }
+                }
+//                setGameModeBackToDefaultIfNecessary(player, world);
+                return;
+            }
+            addPlayerParticipationIfNotExists(player, world);
+            PlayerParticipation participation = new PlayerParticipation(player, world);
+            if (participation.isDeathBanned()) {
+                sendYouCantPlayMessage(participation);
+                event.setCancelled(true);
+                preventPlayerEnterWorld(participation);
+            } else {
+                setGameModeBackToDefaultIfNecessary(player, world);
+                sendEnteringWorldMessage(player);
+            }
+        } catch (PlayerNotParticipatedException | WorldIsNotHardcoreException ignored) {
+        } // This cannot happen.
     }
 
     public static void handlePlayerEnterWorld(@NotNull Event event) {
@@ -127,7 +211,7 @@ public final class WorldUtils {
         return environment == World.Environment.NETHER ? "_nether" : "_the_end";
     }
 
-    private static void addPlayerParticipationIfNotExists(@NotNull Player player, @NotNull World world) {
+    public static void addPlayerParticipationIfNotExists(@NotNull Player player, @NotNull World world) {
         try {
             PlayerParticipation.addPlayerParticipation(player, world, new Date());
         } catch (PlayerParticipationAlreadyExistsException ignored) {
@@ -136,15 +220,26 @@ public final class WorldUtils {
 
     private static void sendYouCantPlayMessage(@NotNull PlayerParticipation participation) {
         String message = participation.isBannedForever() ? "You can't play in this world since you died" :
-                "You can't play in this world now. You'll be able to join again on " + participation.getUnBanDate();
+                ChatColor.GRAY + "You cannot join the " + ChatColor.RED + "hardcore" + ChatColor.GRAY + " world again until " + ChatColor.AQUA + participation.getUnBanDate();
         MessageSender.sendNormal(participation.getPlayer(), message);
     }
 
     private static void sendEnteringWorldMessage(@NotNull Player player) {
-        MessageSender.sendNormal(player, "You are entering a HARDCORE world, be careful!");
+        MultiverseHardcore plugin = MultiverseHardcore.getInstance();
+        String resourceURL = plugin.getConfig().getString("HardcoreResourcePackURL");
+        if (resourceURL != null && !resourceURL.isEmpty()) {
+            player.setResourcePack(resourceURL);
+        }
+        player.setInvulnerable(true);
+        player.setCanPickupItems(false);
+        plugin.getServer().getScheduler().runTaskLater(plugin, () -> {
+            player.setInvulnerable(false);
+            player.setCanPickupItems(true);
+        }, 100); // 100 ticks 20 per second 5 seconds of invulnerability
+        MessageSender.sendNormal(player, "You have entered a " + ChatColor.RED + "HARDCORE" + ChatColor.RESET + " world, be careful!");
     }
 
-    private static void preventPlayerEnterWorld(@NotNull PlayerParticipation participation) {
+    public static void preventPlayerEnterWorld(@NotNull PlayerParticipation participation) {
         int enterWorldTicks = getConfig().getInt("enter_world_ticks");
         HardcoreWorld hcWorld = participation.getHcWorld();
         Player player = participation.getPlayer();
@@ -153,7 +248,7 @@ public final class WorldUtils {
             if (hcWorld.getConfiguration().isSpectatorMode()) {
                 player.setGameMode(GameMode.SPECTATOR);
             } else {
-                respawnPlayer(player);
+                respawnPlayer(player, hcWorld);
             }
         }, enterWorldTicks);
     }
@@ -168,5 +263,23 @@ public final class WorldUtils {
         if (player.getGameMode() == GameMode.SPECTATOR) {
             player.setGameMode(getDefaultGameMode(world));
         }
+    }
+
+    public static String parseTime(long time) {
+        long hours = time / 1000 + 6;
+        long minutes = (time % 1000) * 60 / 1000;
+        String ampm = "AM";
+        if (hours >= 12) {
+            hours -= 12;
+            ampm = "PM";
+        }
+        if (hours >= 12) {
+            hours -= 12;
+            ampm = "AM";
+        }
+        if (hours == 0) hours = 12;
+        String mm = "0" + minutes;
+        mm = mm.substring(mm.length() - 2, mm.length());
+        return hours + ":" + mm + " " + ampm;
     }
 }

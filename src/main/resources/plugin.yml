@@ -1,7 +1,12 @@
 name: MultiverseHardcore
-version: 1.0.3
+version: 2.0.0
 api-version: "1.15"
 main: me.lluiscamino.multiversehardcore.MultiverseHardcore
+softdepend:
+  - Multiverse-NetherPortals
+  - PlaceholderAPI
+depend:
+  - Multiverse-Core
 commands:
   mvhc:
     description: Main MultiverseHardcore command. Options = { create, makehc, player, world, list, version }

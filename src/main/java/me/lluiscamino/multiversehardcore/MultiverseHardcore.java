@@ -4,14 +4,13 @@ import com.onarandombox.MultiverseCore.MultiverseCore;
 import com.onarandombox.MultiverseCore.api.MVWorldManager;
 import me.lluiscamino.multiversehardcore.commands.HelpCommand;
 import me.lluiscamino.multiversehardcore.commands.MainCommand;
-import me.lluiscamino.multiversehardcore.events.PlayerChangeOfWorld;
-import me.lluiscamino.multiversehardcore.events.PlayerDeath;
-import me.lluiscamino.multiversehardcore.events.PlayerJoin;
+import me.lluiscamino.multiversehardcore.events.*;
 import me.lluiscamino.multiversehardcore.files.HardcoreWorldsList;
+import me.lluiscamino.multiversehardcore.models.PlaceholderAPIExpansion;
 import me.lluiscamino.multiversehardcore.utils.MessageSender;
+import org.bukkit.Bukkit;
 import org.bukkit.command.PluginCommand;
 import org.bukkit.event.Listener;
-import org.bukkit.plugin.Plugin;
 import org.bukkit.plugin.PluginDescriptionFile;
 import org.bukkit.plugin.java.JavaPlugin;
 import org.bukkit.plugin.java.JavaPluginLoader;
@@ -58,14 +57,19 @@ public class MultiverseHardcore extends JavaPlugin {
         loadEventListeners();
         loadCommands();
         scheduleWorldCleanUp();
+        // Small check to make sure that PlaceholderAPI is installed
+        if(Bukkit.getPluginManager().getPlugin("PlaceholderAPI") != null) {
+            new PlaceholderAPIExpansion(this).register();
+        }
     }
 
     private void loadMultiverseCore() {
-        Plugin multiversePlugin = getServer().getPluginManager().getPlugin("Multiverse-Core");
-        if (multiversePlugin instanceof MultiverseCore) {
-            MVWorldManager = ((MultiverseCore) multiversePlugin).getMVWorldManager();
-        } else {
+        MultiverseCore mvCore = (MultiverseCore) getServer().getPluginManager().getPlugin("Multiverse-Core");
+        // Test if the Core was found, if not we'll disable this plugin.
+        if (mvCore == null) {
             throw new RuntimeException("Multiverse-Core not found!");
+        } else {
+            MVWorldManager = mvCore.getMVWorldManager();
         }
     }
 
@@ -77,7 +81,7 @@ public class MultiverseHardcore extends JavaPlugin {
     }
 
     private void loadEventListeners() {
-        Listener[] listeners = {new PlayerDeath(), new PlayerChangeOfWorld(), new PlayerJoin()};
+        Listener[] listeners = {new PlayerDeath(), new PlayerTeleport(), new PlayerJoin(), new RandomTPOnPreviousLocationNull(), new EnderChests()};
         for (Listener listener : listeners) {
             loadEventListener(listener);
         }
