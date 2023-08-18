@@ -15,6 +15,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.util.Vector;
 
 import java.util.Date;
@@ -44,6 +45,16 @@ public class PlayerDeath implements Listener {
             player.setExhaustion(5);
             player.setVelocity(new Vector());
             player.getActivePotionEffects().forEach(potionEffect -> player.removePotionEffect(potionEffect.getType()));
+
+            // Drop ender chest items
+            for (ItemStack itemStack : player.getEnderChest().getContents()) {
+                if (itemStack != null) {
+                    player.getWorld().dropItemNaturally(player.getLocation(), itemStack);
+                }
+            }
+
+            player.getEnderChest().clear();
+
             WorldUtils.preventPlayerEnterWorld(participation);
         } catch (PlayerNotParticipatedException | WorldIsNotHardcoreException ignored) {
         }
